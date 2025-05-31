@@ -6,6 +6,7 @@ use IEEE.STD_LOGIC_1164.ALL;
 entity mode_selector is
 port(
     CLK: in std_logic;
+    RST: in std_logic;
     MD0, MD1, MD2, MD3: in std_logic;
     MODE: in std_logic_vector(1 downto 0);
     Qnext: in std_logic;
@@ -18,11 +19,14 @@ end entity mode_selector;
 architecture behavioural of mode_selector is
 begin
 
-process(CLK, MODE, FC, Qnext)
+process(CLK, MODE, FC, Qnext, RST)
 variable sel: std_logic_vector(3 downto 0) := (others => '0');
 begin
-    
-    if rising_edge(CLK) then
+    if RST = '1' then
+        Di <= '1';
+        sel := (others => '0');
+    -- this needs to be clocked because it directly drives a bit of std_logic_vector inter_data, the whole data register
+    elsif rising_edge(CLK) then
         sel(3) := FC;
         sel(2) := OUT_EN;
         sel(1) := MODE(1);

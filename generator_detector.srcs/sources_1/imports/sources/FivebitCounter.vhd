@@ -22,6 +22,9 @@ begin
     begin
         if reset = '1' then
             Q <= "00000";
+            he <= '0';
+            me <= '0';
+            ce <= '0';
         elsif clk'event and clk = '1' then
             q_next := unsigned(Q) + 1;
             -- If 6 cycles passed the header phase end is signaled

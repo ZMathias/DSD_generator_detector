@@ -20,6 +20,7 @@ begin
     
     if cnt_en = '0' then
         counter := (others => '0');
+        T_END <= '0';
     elsif cnt_en = '1' then
         if rising_edge(clk) then
             counter := counter + 1; -- increment counter at each front

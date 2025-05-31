@@ -7,7 +7,7 @@ entity Toplevel is
         reset, clk, run : in std_logic;--, sel : in std_logic;
         mode : in std_logic_vector(1 downto 0);
         clk_sw: in std_logic;
-        hf, mf, cf, clkout, dataout, lout : out std_logic;
+        hf, mf, cf, clkout, dataout: out std_logic;
         state : out std_logic_vector(1 downto 0);
         seg  : out std_logic_vector(6 downto 0);  -- Segments A-G (Active LOW)
         an   : out std_logic_vector(3 downto 0)
@@ -38,7 +38,7 @@ end component;
 component Detector is
     port(
         data, reset, clk, internalclk : in std_logic;
-        hf, mf, cf, clkout, dataout, lout : out std_logic;
+        hf, mf, cf, clkout, dataout: out std_logic;
         state : out std_logic_vector(1 downto 0); -- displaying the current state of CU f
         seg  : out std_logic_vector(6 downto 0);  -- Segments A-G (Active LOW)
         an   : out std_logic_vector(3 downto 0)   -- anode controller
@@ -54,7 +54,7 @@ signal gated_clk: std_logic := '1';
 
 begin
 
-gated_clk <= internalclk and clk_sw;
+gated_clk <= internalclk and clk_sw; -- this gates the clock for debugging, this is used to pause the transmission to check states and flags
 
 generator_0 : Generator port map(
     CLK_fast => clk,
@@ -74,7 +74,6 @@ detector_0 : Detector port map(
     hf => hfinternal,
     mf => mf, -- not used
     cf => cfinternal,
-    lout => lout,
     state => state,
     dataout => dataout,
     seg => seg,

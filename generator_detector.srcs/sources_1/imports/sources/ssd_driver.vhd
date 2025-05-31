@@ -99,7 +99,7 @@ begin
     end process hex_decoder_proc;
 
     -- Process for selecting which anode to activate (Active LOW)
-    anode_selector_proc : process(digit_select)
+    anode_selector_proc : process(digit_select, enable)
     begin
         if enable = '1' then  
             case digit_select is

@@ -4,7 +4,7 @@ use IEEE.STD_LOGIC_1164.ALL;
 
 entity ControlUnit is
     port( data, me, ce, hc, he, clk, cc, reset : in std_logic;
-        internalreset, hf, mf, cf, lout : out std_logic;
+        internalreset, hf, mf, cf: out std_logic;
          stateout : out std_logic_vector(1 downto 0));
 end ControlUnit;
 
@@ -77,7 +77,6 @@ mf <= '1' when state = "10" else
 cf <= ((not state(0) and not state(1)) or (ce and cc)) and cf_latch;
 
 stateout <= state;
-lout <= cf_latch;
 
 
 process(clk, reset)

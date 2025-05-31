@@ -6,7 +6,7 @@ use IEEE.STD_LOGIC_1164.ALL;
 entity Detector is
     port(
         data, reset, clk, internalclk : in std_logic;
-        hf, mf, cf, clkout, dataout, lout : out std_logic;
+        hf, mf, cf, clkout, dataout: out std_logic;
         state : out std_logic_vector(1 downto 0);
         seg  : out std_logic_vector(6 downto 0);  -- Segments A-G (Active LOW)
         an   : out std_logic_vector(3 downto 0)
@@ -45,7 +45,7 @@ end component;
 
 component ControlUnit 
     port( data, me, ce, hc, he, clk, cc, reset : in std_logic;
-        internalreset, hf, mf, cf, lout : out std_logic;
+        internalreset, hf, mf, cf: out std_logic;
         stateout : out std_logic_vector(1 downto 0));
 end component;
 
@@ -163,7 +163,6 @@ controlunit_0 : ControlUnit port map(
     cc => cc_internal,
     clk => internalclk,
     reset => reset,
-    lout => lout,
     internalreset => internalreset_internal,
     hf => hf_internal,
     mf => mf_internal,
