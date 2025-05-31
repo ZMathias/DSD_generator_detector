@@ -41,6 +41,7 @@
 *_synth_*
 
 .jobs
+.bit
 
 generator.runs/
 
