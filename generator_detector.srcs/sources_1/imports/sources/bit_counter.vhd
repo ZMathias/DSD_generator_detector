@@ -9,6 +9,11 @@ port(
 );
 end bit_counter;
 
+
+-- this describes the bit counter resource used by the control unit
+-- this counts the 26 bits that need to be sent out and signals when 
+-- this task is accomplished
+-- the cnt_en doubles as the asynchronous reset
 architecture behavioural of bit_counter is
 begin
 
@@ -24,7 +29,7 @@ begin
     elsif cnt_en = '1' then
         if rising_edge(clk) then
             counter := counter + 1; -- increment counter at each front
-            if counter = 26 then -- we count 27 states
+            if counter = 26 then -- we count 26 states
                 T_END <= '1';
             else T_END <= '0';         
             end if;

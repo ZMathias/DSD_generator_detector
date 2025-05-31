@@ -8,6 +8,8 @@ port(
 );
 end entity checksum_calculator;
 
+-- describes a simple checksum calculator
+-- every checksum bit is a simple 4 way XOR of a nibble
 architecture behavioural of checksum_calculator is
 begin
     checksum(3) <= DATA(15) xor DATA(14) xor DATA(13) xor DATA(12);

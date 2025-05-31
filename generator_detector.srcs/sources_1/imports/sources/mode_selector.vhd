@@ -16,6 +16,10 @@ port(
 );
 end entity mode_selector;
 
+-- this describes the circuit that populates a flip flop based on the current operating mode
+-- this is function is implemented by a simple 16:1 MUX
+-- logically the same as the schematic in the description
+
 architecture behavioural of mode_selector is
 begin
 
@@ -25,6 +29,7 @@ begin
     if RST = '1' then
         Di <= '1';
         sel := (others => '0');
+        
     -- this needs to be clocked because it directly drives a bit of std_logic_vector inter_data, the whole data register
     elsif rising_edge(CLK) then
         sel(3) := FC;

@@ -1,7 +1,7 @@
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 
-entity exec_unit is
+entity control_unit is
     Port(
         run      : in  std_logic;
         t_end    : in  std_logic;
@@ -15,9 +15,14 @@ entity exec_unit is
         FC       : out std_logic;
         state_out: out std_logic_vector(1 downto 0)
     );
-end entity exec_unit;
+end entity control_unit;
 
-architecture behavioural of exec_unit is
+
+-- implements the state diagram from the generator description document
+-- it has these four states listed below: standby, transmission, verification and transmission complete
+-- this controls the whole generator and uses the counter resource defined in the main.vhd and uses an internal
+-- error state latch described also in the document
+architecture behavioural of control_unit is
 
     constant S_STANDBY              : std_logic_vector(1 downto 0) := "00";
     constant S_TRANSMIT             : std_logic_vector(1 downto 0) := "01";

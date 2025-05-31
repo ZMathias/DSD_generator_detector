@@ -21,7 +21,9 @@ end entity Generator;
 
 architecture structural of Generator is
 
-component exec_unit is
+-- component declarations
+
+component control_unit is
     Port(
         run      : in  std_logic;
         t_end    : in  std_logic;
@@ -64,15 +66,21 @@ end component;
 
 signal CLK_slow: std_logic := '0'; -- ~1 HZ clock
 
+-- this contains the state of the generator
+-- used for debugging and outputting to the SSD of the Basys 3
+-- this can be omitted
 signal dbg_state: std_logic_vector(15 downto 0) := (others => '0');
 
--- EU signals
+-- CU generated signals
 signal inter_OUT_EN: std_logic := '0';
 signal inter_CNT_EN: std_logic := '0';
-signal inter_S_OUT: std_logic := '1';
 signal inter_FC: std_logic := '0';
 
+-- the internal shift out signal from the data segment itself
+signal inter_S_OUT: std_logic := '1';
+
 -- bit counter signals
+-- signals the end of transmission for the CU
 signal inter_T_END: std_logic := '0';
 
 begin
@@ -80,10 +88,25 @@ begin
 div: freq_div port map(clk100 => CLK_fast, clk_1hz => CLK_slow); -- frequency divider, creates ~1Hz clock
 CLK_out <= CLK_slow; -- this clock is passed on to the detector aswell
 
+-- this defines the whole 26 bit data segment including -- 1 + 6 bits for the header (this includes the first bit which is always zero for transmission start)
+                                                        -- 16 bits for the data segment
+                                                        -- 4 bits for the checksum calculated internally using the data segment
+                                                        -- data is loaded and the buffer is shifted internally
+-- this also provides the ungated output signal
+-- it is not guaranteed that it is always high when not transmitting therefore an additional gating process is defined at the end of this file    
 data_sel: data_seg port map(CLK => CLK_slow, RST => RST, MODE => MODE, FC => inter_FC, OUT_EN => inter_OUT_EN, S_OUT => inter_S_OUT);
-EU: exec_unit port map(run => RUN, t_end => inter_T_END, hf => HF, cf => CF, reset => RST, CLK => CLK_slow, CNT_EN => inter_CNT_EN, OUT_EN => inter_OUT_EN, TC => TC, FC => inter_FC, state_out => dbg_state(1 downto 0));
+
+-- the file was mistakenly named but vivado does not allow renaming
+-- the control unit is located in the "exec_unit.vhdl"
+CU: control_unit port map(run => RUN, t_end => inter_T_END, hf => HF, cf => CF, reset => RST, CLK => CLK_slow, CNT_EN => inter_CNT_EN, OUT_EN => inter_OUT_EN, TC => TC, FC => inter_FC, state_out => dbg_state(1 downto 0));
+
+-- this is the first resource that the control unit uses
+-- the second is the error latch but that is so simple that it is included and abstractad in 
+-- the signal generation and state holding part of the control unit
 counter: bit_counter port map(clk => CLK_slow, cnt_en => inter_CNT_EN, T_END => inter_T_END);
 
+-- this assures that the output serial pin is always held logic 'HIGH' when no transmission is in progress
+-- this is done to ensure transmission reliability and to adhere to the specifications
 serial_out_gating: process(inter_OUT_EN, inter_S_OUT)
 begin
 

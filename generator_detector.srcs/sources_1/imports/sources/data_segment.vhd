@@ -14,6 +14,8 @@ end entity data_seg;
 
 architecture structural of data_seg is
 
+-- component declarations
+
 component checksum_calculator is
 port(
     DATA: in std_logic_vector(15 downto 0);
@@ -58,10 +60,11 @@ signal checksum_vec: std_logic_vector(3 downto 0) := (others => '0');
 
 begin
 
--- we need to generate or write 7 mode selectors that load the data for the header
+-- we need to write 7 mode selectors that load the data for the header
 -- we then need 16 bits for the data itself
 -- lastly, we need a checksum calculator that feeds into the last four bits
 -- this whole module will just have the job of populating the data segment
+-- and shifting the data if output is enabled through OUT_EN
 
 checksum_calc: checksum_calculator port map(DATA => data_selection, checksum => checksum_vec);
 data_sel: data_selector port map(M0 => Mode(0), data => data_selection);

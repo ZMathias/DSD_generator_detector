@@ -12,6 +12,7 @@ Port(
 );
 end entity data_mux;
 
+-- describes a simple mux that either wires the flip flop for shifting or for populating it with data
 architecture behavioural of data_mux is
 begin
 

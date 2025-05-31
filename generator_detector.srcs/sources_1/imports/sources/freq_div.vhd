@@ -9,8 +9,11 @@ entity freq_div is
     );
 end freq_div;
 
+-- describes a single frequency divider that divides the 100mhz clock by 2^26. This equates to a period of roughly ~1.3 seconds
 architecture behavioural of freq_div is
+
 signal n: std_logic_vector(26 downto 0) := (others => '0');
+
 begin
     process(clk100, n)
     begin
