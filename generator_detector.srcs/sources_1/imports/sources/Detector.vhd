@@ -1,179 +1,256 @@
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 
-
-
+-- Entity declaration for the main Detector
 entity Detector is
     port(
-        data, reset, clk, internalclk : in std_logic;
-        hf, mf, cf, clkout, dataout: out std_logic;
-        state : out std_logic_vector(1 downto 0);
-        seg  : out std_logic_vector(6 downto 0);  -- Segments A-G (Active LOW)
-        an   : out std_logic_vector(3 downto 0)
+        -- Inputs
+        data        : in std_logic; -- Serial data input for the detector
+        reset       : in std_logic; -- Asynchronous reset for the entire system
+        clk         : in std_logic; -- Main clock for synchronous operations (e.g., seven segment)
+        internalclk : in std_logic; -- Clock for the core logic (main register, counter, control unit)
+        
+        -- Outputs
+        hf          : out std_logic; -- Header flag: indicates header phase or specific conditions met
+        mf          : out std_logic; -- Message flag: indicates message reception phase
+        cf          : out std_logic; -- Checksum flag: indicates checksum validity
+        clkout      : out std_logic; -- Outputs the internal clock signal
+        seg         : out std_logic_vector(6 downto 0); -- Seven-segment display segments
+        an          : out std_logic_vector(3 downto 0)  -- Seven-segment display anode enables 
     );
 end Detector;
 
 architecture Structural of Detector is
 
-component ChecksumCalc
-    port(data : in std_logic_vector(15 downto 0);
-        chk : out std_logic_vector(3 downto 0));
-end component;
+    -- Component Declarations
+    
+    -- Calculates a 4-bit checksum from 16-bit data
+    component ChecksumCalc
+        port(data : in std_logic_vector(15 downto 0); -- Input data for checksum calculation
+             chk  : out std_logic_vector(3 downto 0)); -- Calculated checksum
+    end component;
 
-component ChecksumComp
-    port( A, B : in std_logic_vector(3 downto 0);
-        Y : out std_logic);
-end component;
+    -- Compares two 4-bit checksums
+    component ChecksumComp
+        port(A, B : in std_logic_vector(3 downto 0); -- Checksums to compare
+             Y    : out std_logic);                 -- Comparison result '1' if equal
+    end component;
 
-component HeaderComp
-    port( A, B : in std_logic_vector(5 downto 0);
-        Y : out std_logic);
-end component;
+    -- Compares two 6-bit headers
+    component HeaderComp
+        port(A, B : in std_logic_vector(5 downto 0);  -- Headers to compare
+             Y    : out std_logic);                  -- Comparison result 1' if equal
+    end component;
 
-component FivebitCounter
-    port(reset, clk : in std_logic;
-        he, me, ce : out std_logic);
-end component;
+    -- counter or timing phases
+    component FivebitCounter
+        port(reset, clk : in std_logic;      -- Reset and clock inputs
+             he, me, ce : out std_logic);    -- Phase end signals: Header End, Message End, Checksum End
+    end component;
 
-component Mainregister is
-    generic (N: INTEGER := 26);
-    port(data, clk, reset : in std_logic;
-        headerb : out std_logic_vector(5 downto 0);
-        checksumb : out std_logic_vector(3 downto 0);
-        datab : out std_logic_vector(0 to 15));
-end component;
+    -- Main shift register to capture incoming serial data
+    component Mainregister is
+        generic (N: INTEGER := 26);         -- Configurable size of the register (default 26 bits)
+        port(data      : in std_logic;      -- Serial data input
+             clk       : in std_logic;      -- Clock for shifting data
+             reset     : in std_logic;      -- Reset for the register
+             headerb   : out std_logic_vector(5 downto 0);   -- Extracted header bits
+             checksumb : out std_logic_vector(3 downto 0); -- Extracted checksum bits
+             datab     : out std_logic_vector(0 to 15));   -- Extracted data bits
+    end component;
 
-component ControlUnit 
-    port( data, me, ce, hc, he, clk, cc, reset : in std_logic;
-        internalreset, hf, mf, cf: out std_logic;
-        stateout : out std_logic_vector(1 downto 0));
-end component;
+    -- Control Unit - manages the state of the detection process
+    component ControlUnit 
+        port(data          : in std_logic; -- Serial data input 
+             me            : in std_logic; -- Message End signal from FivebitCounter
+             ce            : in std_logic; -- Checksum End signal from FivebitCounter
+             hc            : in std_logic; -- Header Correct signal (from HeaderComp ANDed with he)
+             he            : in std_logic; -- Header End signal from FivebitCounter
+             clk           : in std_logic; -- Clock 
+             cc            : in std_logic; -- Checksum Correct signal (from ChecksumComp)
+             reset         : in std_logic; -- External reset for the FSM
+             internalreset : out std_logic;-- Internal reset signal generated by FSM (e.g., in Standby state)
+             hf            : out std_logic;-- Header Flag output
+             mf            : out std_logic;-- Message Flag output
+             cf            : out std_logic); -- Current state
+    end component;
 
-component seven_segment_hex_driver 
-     port (
-        clk      : in  std_logic;
-        rst      : in  std_logic;
-        data_in  : in  std_logic_vector(15 downto 0); -- 4-bit hex value per digit
-        enable   : in std_logic; -- enable the display 
-        seg_out  : out std_logic_vector(6 downto 0);  -- Segments A-G (Active LOW)
-        an_out   : out std_logic_vector(3 downto 0)   -- Anodes AN0-AN3 (Active LOW)
-    );
-end component;
+    -- Driver for a 4-digit seven-segment display showing hex values
+    component seven_segment_hex_driver 
+        port (
+            clk      : in  std_logic; -- Clock for display refresh
+            rst      : in  std_logic; -- Reset for the display driver
+            data_in  : in  std_logic_vector(15 downto 0); -- Data to be displayed (4 hex digits)
+            enable   : in std_logic;  -- Enable
+            seg_out  : out std_logic_vector(6 downto 0); -- Segment outputs
+            an_out   : out std_logic_vector(3 downto 0)  -- Anode select outputs
+        );
+    end component;
 
-signal internalreset_internal : std_logic;
-signal resourcereset : std_logic;
+    -- Internal Signals
 
+    -- Signal for internal reset generated by the ControlUnit, used by other components
+    signal internalreset_internal : std_logic;
+    -- Combined reset signal (external reset OR internal reset) for components like counter and main register
+    signal resourcereset          : std_logic;
 
-signal hf_internal : std_logic;
-signal mf_internal : std_logic;
-signal cf_internal : std_logic;
+    -- Internal signals of the output flags from ControlUnit
+    signal hf_internal : std_logic; -- Header Flag
+    signal mf_internal : std_logic; -- Message Flag
+    signal cf_internal : std_logic; -- Checksum Flag
 
-signal headerb_internal : std_logic_vector(5 downto 0);
-signal checksumb_internal : std_logic_vector(3 downto 0);
-signal datab_internal : std_logic_vector(15 downto 0);
-signal data_reversed: std_logic_vector(15 downto 0);
+    -- Signals carrying data extracted by the Mainregister
+    signal headerb_internal   : std_logic_vector(5 downto 0);   -- Received header
+    signal checksumb_internal : std_logic_vector(3 downto 0); -- Received checksum
+    signal datab_internal     : std_logic_vector(15 downto 0); -- Received data payload
+    -- Signal to hold the bit-reversed version of the data payload for display
+    signal data_reversed      : std_logic_vector(15 downto 0);
 
-signal calculated_checksum_internal : std_logic_vector(3 downto 0);
+    -- Signal for the checksum calculated from the received data payload
+    signal calculated_checksum_internal : std_logic_vector(3 downto 0);
 
-signal data_internal : std_logic;
-signal me_internal : std_logic;
-signal ce_internal : std_logic;
-signal hc_internal : std_logic;
-signal he_internal : std_logic;
-signal cc_internal : std_logic;
+    -- Internal signals for interfacing with components
+    signal data_internal : std_logic; -- Internal copy of the main data input
+    signal me_internal   : std_logic; -- Message End from FivebitCounter
+    signal ce_internal   : std_logic; -- Checksum End from FivebitCounter
+    signal hc_internal   : std_logic; -- Header Correct 
+    signal he_internal   : std_logic; -- Header End from FivebitCounter
+    signal cc_internal   : std_logic; -- Checksum Correct from ChecksumComp
 
-signal header_comp_internal : std_logic;
+    -- Output of the header comparator
+    signal header_comp_internal : std_logic;
 
-signal header_hardcoded : std_logic_vector(5 downto 0);
+    -- Hardcoded header value to compare against the received header
+    signal header_hardcoded : std_logic_vector(5 downto 0);
 
-signal ssd_enable : std_logic;
+    -- Enable signal for the seven-segment display
+    signal ssd_enable : std_logic;
 
-FUNCTION bit_reverse(s1:std_logic_vector) return std_logic_vector is
-     variable rr : std_logic_vector(s1'high downto s1'low);
-  begin
-    for ii in s1'high downto s1'low loop
-      rr(ii) := s1(s1'high-ii);
-    end loop;
-    return rr;
-  end bit_reverse;
+    -- Function to reverse the bit order of a std_logic_vector
+    -- Useful if data is captured in one order but needs to be displayed or processed in another
+    FUNCTION bit_reverse(s1:std_logic_vector) return std_logic_vector is
+        variable rr : std_logic_vector(s1'high downto s1'low);
+    begin
+        for ii in s1'high downto s1'low loop
+            rr(ii) := s1(s1'high-ii); -- Swaps bits, e.g., LSB becomes MSB and vice-versa
+        end loop;
+        return rr;
+    end bit_reverse;
 
 begin
-data_internal <= data;
-dataout <= data;
-header_hardcoded <= "110011";
-resourcereset <= reset or internalreset_internal;
-hc_internal <= header_comp_internal and he_internal;
+    -- Signal Assignments and Port Mappings
 
-data_reversed <= bit_reverse(s1 => datab_internal);
+    -- Pass through the input data signal
+    data_internal <= data;
 
-seven_segment_hex_driver_0 : seven_segment_hex_driver port map(
-     clk =>   clk, 
-     rst =>     reset,
-     data_in  => data_reversed,
-     seg_out  => seg,
-     an_out => an,
-     enable => ssd_enable
-);
+    -- Define the expected header value
+    header_hardcoded <= "110011"; -- Hardcoded header
 
-mainregister_0 : Mainregister port map(
-    data => data_internal,
-    reset => resourcereset,
-    clk => internalclk,
-    headerb => headerb_internal,
-    checksumb => checksumb_internal,
-    datab => datab_internal
-);
+    -- Combine external reset with the internal reset from ControlUnit
+    -- This ensures components are reset either by external signal or CU's internal logic
+    resourcereset <= reset or internalreset_internal;
 
---freqdivider_0 : Freqdivider port map(
---    clk100 => clk,
---    clk1 => internalclk
---);
+    -- Header Correct (hc_internal) is true if the header comparison is successful (header_comp_internal)
+    -- AND the header phase has ended (he_internal).
+    hc_internal <= header_comp_internal and he_internal;
 
-checksumcalc_0 : ChecksumCalc port map(
-    data => datab_internal,
-    chk => calculated_checksum_internal
-);
+    -- Reverse the bit order of the received data payload, for correct display on ssd
+    data_reversed <= bit_reverse(s1 => datab_internal);
 
-checksumcomp_0 : ChecksumComp port map(
-    a => checksumb_internal,
-    b => calculated_checksum_internal,
-    y => cc_internal
-);
+    -- Instantiate the seven-segment display driver
+    seven_segment_hex_driver_0 : seven_segment_hex_driver port map(
+        clk      => clk,       -- Using the main system clock for display
+        rst      => reset,     -- Using the main system reset
+        data_in  => data_reversed, -- Displaying the bit-reversed data payload
+        seg_out  => seg,       -- Connecting to segment outputs
+        an_out   => an,        -- Connecting to anode outputs
+        enable   => ssd_enable -- Display is enabled based on ssd_enable signal
+    );
 
-headercomp_0 : HeaderComp port map(
-    a => headerb_internal,
-    b => header_hardcoded,
-    y => header_comp_internal
-);
+    -- Instantiate the Mainregister
+    -- This register captures the incoming serial 'data_internal' bit by bit using 'internalclk'.
+    -- 'resourcereset' resets its contents.
+    -- It outputs the assembled header, checksum, and data payload.
+    mainregister_0 : Mainregister port map(
+        data      => data_internal,
+        reset     => resourcereset,
+        clk       => internalclk,
+        headerb   => headerb_internal,
+        checksumb => checksumb_internal,
+        datab     => datab_internal
+    );
 
-fivebitcounter_0 : FivebitCounter port map(
-    reset => resourcereset,
-    clk => internalclk,
-    he => he_internal,
-    me => me_internal,
-    ce => ce_internal
-);
+    -- Instantiate the ChecksumCalc component
+    -- Calculates checksum over the received data payload ('datab_internal').
+    checksumcalc_0 : ChecksumCalc port map(
+        data => datab_internal,
+        chk  => calculated_checksum_internal
+    );
 
-controlunit_0 : ControlUnit port map(
-    data => data_internal,
-    me => me_internal,
-    ce => ce_internal,
-    hc => hc_internal,
-    he => he_internal,
-    cc => cc_internal,
-    clk => internalclk,
-    reset => reset,
-    internalreset => internalreset_internal,
-    hf => hf_internal,
-    mf => mf_internal,
-    cf => cf_internal,
-    stateout => state
-);
+    -- Instantiate the ChecksumComp component
+    -- Compares the received checksum ('checksumb_internal') with the calculated one ('calculated_checksum_internal').
+    -- The result ('cc_internal') indicates if the checksums match.
+    checksumcomp_0 : ChecksumComp port map(
+        a => checksumb_internal,
+        b => calculated_checksum_internal,
+        y => cc_internal
+    );
 
-hf <= hf_internal;
-mf <= mf_internal;
-cf <= cf_internal;
-ssd_enable <= hf_internal and mf_internal and cf_internal; -- only enable if received data is valid
-clkout <= internalclk;
+    -- Instantiate the HeaderComp component
+    -- Compares the received header ('headerb_internal') with the predefined 'header_hardcoded'.
+    -- The result ('header_comp_internal') indicates if the headers match.
+    headercomp_0 : HeaderComp port map(
+        a => headerb_internal,
+        b => header_hardcoded,
+        y => header_comp_internal
+    );
+
+    -- Instantiate the FivebitCounter
+    -- This counter manages timing for different phases of packet reception.
+    -- 'resourcereset' resets the counter. It's clocked by 'internalclk'.
+    -- 'he', 'me', 'ce' are outputs indicating the end of Header, Message, and Checksum phases respectively.
+    fivebitcounter_0 : FivebitCounter port map(
+        reset => resourcereset,
+        clk   => internalclk,
+        he    => he_internal,
+        me    => me_internal,
+        ce    => ce_internal
+    );
+
+    -- Instantiate the ControlUnit 
+    -- This is the brain of the detector, managing states based on inputs and counter signals.
+    -- 'data_internal': serial data, can trigger transition from Standby (state "00").
+    -- 'me_internal', 'ce_internal', 'he_internal': phase end signals from the counter.
+    -- 'hc_internal': header correct signal.
+    -- 'cc_internal': checksum correct signal.
+    -- 'internalclk': clock for state transitions.
+    -- 'reset': external reset.
+    -- 'internalreset_internal':
+    -- 'hf_internal', 'mf_internal', 'cf_internal': flags.
+    -- 'state': current state output.
+    controlunit_0 : ControlUnit port map(
+        data          => data_internal,
+        me            => me_internal,
+        ce            => ce_internal,
+        hc            => hc_internal,
+        he            => he_internal,
+        cc            => cc_internal,
+        clk           => internalclk,
+        reset         => reset,
+        internalreset => internalreset_internal,
+        hf            => hf_internal,
+        mf            => mf_internal,
+        cf            => cf_internal
+    );
+
+    -- Assign internal flag signals to the output ports
+    hf <= hf_internal;
+    mf <= mf_internal;
+    cf <= cf_internal;
+
+    -- The seven-segment display is enabled only if header, message, and checksum phases/flags
+    ssd_enable <= hf_internal and mf_internal and cf_internal; 
+    clkout <= internalclk;
+
 
 end Structural;

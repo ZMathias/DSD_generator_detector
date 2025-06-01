@@ -22,36 +22,16 @@ begin
     begin
         if reset = '1' then
             Q <= "00000";
-            he <= '0';
-            me <= '0';
-            ce <= '0';
         elsif clk'event and clk = '1' then
             q_next := unsigned(Q) + 1;
-            -- If 6 cycles passed the header phase end is signaled
-            if q_next = 6 then
-                he <= '1';
-                me <= '0';
-                ce <= '0';
-             -- If 22 cycles passed the message phase end is signaled
-            elsif q_next = 22 then
-                he <= '0';
-                me <= '1';
-                ce <= '0';
-            -- If 26 cycles passed the checksum phase end is signaled
-            elsif q_next = 26 then
-                he <= '0';
-                me <= '0';
-                ce <= '1';
-            -- If not in any of these 
-            else
-                he <= '0';
-                me <= '0';
-                ce <= '0';
-            end if;
+            
             -- Assign value to the internal state
             Q <= std_logic_vector(q_next);
         end if;
     end process;    
 
+he <= '1' when Q = "00110" else '0';
+me <= '1' when Q = "10110" else '0';
+ce <= '1' when Q = "11010" else '0';
 
 end Behavioral;

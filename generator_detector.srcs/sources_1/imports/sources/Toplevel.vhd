@@ -7,8 +7,8 @@ entity Toplevel is
         reset, clk, run : in std_logic;--, sel : in std_logic;
         mode : in std_logic_vector(1 downto 0);
         clk_sw: in std_logic;
-        hf, mf, cf, clkout, dataout: out std_logic;
-        state : out std_logic_vector(1 downto 0);
+        hf, mf, cf, clkout: out std_logic;
+        
         seg  : out std_logic_vector(6 downto 0);  -- Segments A-G (Active LOW)
         an   : out std_logic_vector(3 downto 0)
     );
@@ -38,8 +38,7 @@ end component;
 component Detector is
     port(
         data, reset, clk, internalclk : in std_logic;
-        hf, mf, cf, clkout, dataout: out std_logic;
-        state : out std_logic_vector(1 downto 0); -- displaying the current state of CU f
+        hf, mf, cf, clkout: out std_logic;
         seg  : out std_logic_vector(6 downto 0);  -- Segments A-G (Active LOW)
         an   : out std_logic_vector(3 downto 0)   -- anode controller
     );
@@ -74,8 +73,6 @@ detector_0 : Detector port map(
     hf => hfinternal,
     mf => mf, -- not used
     cf => cfinternal,
-    state => state,
-    dataout => dataout,
     seg => seg,
     an => an,
     clkout => clkout,

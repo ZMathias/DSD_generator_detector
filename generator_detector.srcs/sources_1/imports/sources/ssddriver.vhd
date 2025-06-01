@@ -5,16 +5,15 @@ use IEEE.NUMERIC_STD.ALL;
 -- Entity declaration for the seven-segment hexadecimal driver
 entity seven_segment_hex_driver is
     port (
-        clk     : in  std_logic;                     -- Input: System clock
-        rst     : in  std_logic;                     -- Input: Asynchronous reset (active high)
-        data_in : in  std_logic_vector(15 downto 0); -- Input: 16-bit data (4 bits for each of the 4 digits)
+        clk     : in  std_logic;                     
+        rst     : in  std_logic;                     --Asynchronous reset 
+        data_in : in  std_logic_vector(15 downto 0); --16-bit data (4 bits for each of the 4 digits)
         enable  : in std_logic; -- enable the display
-        seg_out : out std_logic_vector(6 downto 0);  -- Output: 7-segment display segments (A-G, Active LOW)
-        an_out  : out std_logic_vector(3 downto 0)   -- Output: Anode signals for the 4 digits (Active LOW)
+        seg_out : out std_logic_vector(6 downto 0);  -- 7-segment display segments 
+        an_out  : out std_logic_vector(3 downto 0)   -- Anode signals for the 4 digits 
     );
 end entity seven_segment_hex_driver;
 
--- Behavioral architecture for the driver
 architecture Behavioral of seven_segment_hex_driver is
 
     -- System clock frequency (100 MHz)
@@ -67,7 +66,7 @@ begin
                 current_digit_hex <= data_in(11 downto 8);
             when "11" => -- Digit 3
                 current_digit_hex <= data_in(15 downto 12);
-            when others => -- Should not happen, but handle defensively
+            when others => -- Should not happen
                 current_digit_hex <= "1111"; -- Display 'F' or blank
         end case;
     end process data_selector_proc;
@@ -75,7 +74,6 @@ begin
     -- Process for converting the 4-bit hex value to a 7-segment pattern (Active LOW)
     hex_decoder_proc : process(current_digit_hex)
     begin
-        -- The mapping is gfedcba (segment G is MSB, A is LSB)
         -- '0' means the segment is ON, '1' means OFF.
         case current_digit_hex is
             when "0000" => segment_pattern <= "1000000"; -- 0

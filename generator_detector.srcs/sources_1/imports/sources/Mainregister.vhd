@@ -10,11 +10,11 @@ entity Mainregister is
         clk     : in std_logic; -- Input: Clock signal
         reset   : in std_logic; -- Input: Reset signal
 
-        -- Output: Buffer for the first 6 bits (presumably the header)
+        -- Output: Buffer for the first 6 bits 
         headerb : out std_logic_vector(5 downto 0);
-        -- Output: Buffer for the first 4 bits (presumably the checksum)
+        -- Output: Buffer for the first 4 bits 
         checksumb : out std_logic_vector(3 downto 0);
-        -- Output: Buffer for bits 5 to 20 (presumably the data payload)
+        -- Output: Buffer for bits 5 to 20 
         datab   : out std_logic_vector(0 to 15)
     );
 end Mainregister;
@@ -37,7 +37,7 @@ architecture Structural of Mainregister is
 
 begin
 
-    -- Instantiation of the first DFF, connected to the 'data' input
+    -- Instantiation of the first DFF, connected to the 'data'
     first_dff : DFF port map(
         d     => data,
         reset => reset,
@@ -45,7 +45,7 @@ begin
         q     => intermed(1)
     );
 
-    -- Generates and connects the middle DFFs in a chain (q of one to d of the next)
+    -- Generates and connects the middle DFFs in a chain 
     middle_dffs : for i in 1 to N - 2 generate
         dff_i : DFF port map(
             d     => intermed(i),
@@ -63,12 +63,12 @@ begin
         q     => intermed(N)
     );
 
-    -- Output assignments: Tapping specific parts of the shift register
-    -- Assigns the first 4 bits (intermed(1) to intermed(4)) to checksumb
+
+    -- Assigns the first 4 bits  to checksumb
     checksumb <= intermed(1 to 4);
-    -- Assigns the first 6 bits (intermed(1) to intermed(6)) to headerb
+    -- Assigns the first 6 bits  to headerb
     headerb <= intermed(1 to 6);
-    -- Assigns bits 5 through 20 (intermed(5) to intermed(20)) to datab
+    -- Assigns bits 5 through 20  to datab
     datab <= intermed(5 to 20);
 
 end Structural;
