@@ -12,7 +12,6 @@
 *.os
 *.js
 *.pb
-*.dcp
 *.hwdef
 *.vds
 *.veo
@@ -41,9 +40,6 @@
 *_synth_*
 
 .jobs
-.bit
-
-generator.runs/
 
 ### project synth
 */*.runs/synth*/*.xml
@@ -60,6 +56,7 @@ generator.runs/
 *.runs/synth*/*.tcl
 *.runs/synth*/*.bat
 *.runs/synth*/*.xdc
+*.runs/synth*/*.dcp
 !*.runs/synth*/*utilization*.rpt
 
 ### project impl
